@@ -294,11 +294,16 @@ metadata:
 
 test_plan:
   current_focus: 
-    - "Project Team Management System"
+    - "Authentication UI with React Context"
+    - "Kanban Board with Drag-and-Drop" 
+    - "Project and Task Management UI"
     - "Project Team Management UI"
+    - "Real-time Notifications UI"
+    - "Progress Dashboard with Charts"
+    - "File Upload & Comments UI"
   stuck_tasks: []
-  test_all: false
-  test_priority: "high_first"
+  test_all: true
+  test_priority: "sequential"
 
 frontend:
   - task: "Authentication UI with React Context"
