@@ -283,54 +283,6 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
-  - task: "Notifications System"
-    implemented: false
-    working: "NA"
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-          agent: "main"
-          comment: "Starting implementation of notification system with real-time alerts for task assignments and due dates"
-
-  - task: "Progress Analytics & Dashboard Backend"
-    implemented: false
-    working: "NA"
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-          agent: "main"
-          comment: "Starting implementation of analytics endpoints for progress dashboard with chart data"
-
-  - task: "File Attachment System"
-    implemented: false
-    working: "NA"
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-          agent: "main"
-          comment: "Starting implementation of file upload system with base64 storage"
-
-  - task: "Comments System"
-    implemented: false
-    working: "NA"
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-          agent: "main"
-          comment: "Starting implementation of threaded comments system for tasks"
-
 frontend:
   - task: "Authentication UI with React Context"
     implemented: true
