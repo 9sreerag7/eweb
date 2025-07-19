@@ -70,7 +70,12 @@ class Project(BaseModel):
     title: str
     description: Optional[str] = ""
     owner_id: str
+    team_members: List[str] = Field(default_factory=list)  # List of user IDs who are team members
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+# Project Team Management Models
+class ProjectTeamUpdate(BaseModel):
+    team_members: List[str]
 
 # Task Models  
 class TaskCreate(BaseModel):
