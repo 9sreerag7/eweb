@@ -612,9 +612,16 @@ async def get_comments(task_id: str, current_user: User = Depends(get_current_us
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    project = await db.projects.find_one({"id": task["project_id"], "owner_id": current_user.id})
+    # Check if user has access to project (owner OR team member)
+    project = await db.projects.find_one({
+        "id": task["project_id"],
+        "$or": [
+            {"owner_id": current_user.id},  # Project owner
+            {"team_members": current_user.id}  # Team member
+        ]
+    })
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
     
     comments = await db.comments.find({"task_id": task_id}).sort("created_at", 1).to_list(1000)
     return [Comment(**comment) for comment in comments]
