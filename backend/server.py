@@ -332,8 +332,37 @@ async def update_task_status(task_id: str, status: dict, current_user: User = De
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
+    old_status = task["status"]
+    new_status = status["status"]
+    
     # Update status
-    await db.tasks.update_one({"id": task_id}, {"$set": {"status": status["status"]}})
+    await db.tasks.update_one({"id": task_id}, {"$set": {"status": new_status}})
+    
+    # Create notification for status change
+    if old_status != new_status:
+        # Notify task owner if different from user making the change
+        if task["created_by"] != current_user.id:
+            notification = Notification(
+                user_id=task["created_by"],
+                title="Task Status Updated",
+                message=f"Task '{task['title']}' status changed from {old_status} to {new_status}",
+                type="status_change",
+                task_id=task_id,
+                project_id=task["project_id"]
+            )
+            await db.notifications.insert_one(notification.dict())
+        
+        # Notify assigned user if different from both owner and user making the change
+        if task.get("assigned_to") and task["assigned_to"] != current_user.id and task["assigned_to"] != task["created_by"]:
+            notification = Notification(
+                user_id=task["assigned_to"],
+                title="Task Status Updated",
+                message=f"Task '{task['title']}' status changed from {old_status} to {new_status}",
+                type="status_change",
+                task_id=task_id,
+                project_id=task["project_id"]
+            )
+            await db.notifications.insert_one(notification.dict())
     
     # Get updated task
     updated_task = await db.tasks.find_one({"id": task_id})
