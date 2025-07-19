@@ -678,6 +678,245 @@ class ProjectManagementTester:
         except Exception as e:
             self.log_test("Analytics System", False, f"Exception: {str(e)}")
             return False
+
+    def test_team_management_system(self):
+        """Test comprehensive team management system - NEW FEATURE"""
+        print("\n=== Testing Team Management System ===")
+        
+        if not self.auth_token:
+            self.log_test("Team Management System", False, "No auth token available")
+            return False
+
+        # Store original user data
+        manager_token = self.auth_token
+        manager_user = self.user_data
+        manager_project_id = self.project_id
+        
+        try:
+            # Test 1: GET /api/users endpoint (NEW ENDPOINT)
+            print("\n--- Testing GET /api/users endpoint ---")
+            response = self.session.get(f"{BACKEND_URL}/users")
+            if response.status_code == 200:
+                users_list = response.json()
+                if isinstance(users_list, list) and len(users_list) > 0:
+                    self.log_test("GET /api/users", True, f"Retrieved {len(users_list)} users for team management")
+                    # Find a user to add as team member (not the current manager)
+                    team_member_user = None
+                    for user in users_list:
+                        if user["id"] != manager_user["id"]:
+                            team_member_user = user
+                            break
+                    
+                    if not team_member_user:
+                        # Create a team member user for testing
+                        team_member_data = {
+                            "name": "Alex Rodriguez",
+                            "email": "alex.rodriguez@teamdev.com",
+                            "password": "TeamPass456!",
+                            "role": "Team Member"
+                        }
+                        
+                        response = self.session.post(f"{BACKEND_URL}/auth/register", json=team_member_data)
+                        if response.status_code == 200:
+                            team_member_user = response.json()["user"]
+                            self.log_test("Create Team Member User", True, f"Created team member: {team_member_user['name']}")
+                        else:
+                            self.log_test("Create Team Member User", False, f"Failed to create team member: {response.text}")
+                            return False
+                else:
+                    self.log_test("GET /api/users", False, "No users found or invalid response format")
+                    return False
+            else:
+                self.log_test("GET /api/users", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+
+            # Test 2: PUT /api/projects/{project_id}/team - Add team members
+            print("\n--- Testing PUT /api/projects/{project_id}/team endpoint ---")
+            team_update_data = {
+                "team_members": [team_member_user["id"]]
+            }
+            
+            response = self.session.put(f"{BACKEND_URL}/projects/{manager_project_id}/team", json=team_update_data)
+            if response.status_code == 200:
+                updated_project = response.json()
+                if team_member_user["id"] in updated_project.get("team_members", []):
+                    self.log_test("Add Team Member to Project", True, f"Successfully added {team_member_user['name']} to project team")
+                else:
+                    self.log_test("Add Team Member to Project", False, "Team member not found in updated project")
+            else:
+                self.log_test("Add Team Member to Project", False, f"HTTP {response.status_code}: {response.text}")
+
+            # Test 3: Login as team member to test their access
+            print("\n--- Testing team member access ---")
+            team_member_login = {
+                "email": team_member_user["email"],
+                "password": "TeamPass456!"
+            }
+            
+            # Create new session for team member
+            team_member_session = requests.Session()
+            response = team_member_session.post(f"{BACKEND_URL}/auth/login", json=team_member_login)
+            if response.status_code == 200:
+                team_member_token_data = response.json()
+                team_member_session.headers.update({"Authorization": f"Bearer {team_member_token_data['access_token']}"})
+                self.log_test("Team Member Login", True, f"Team member {team_member_user['name']} logged in successfully")
+            else:
+                self.log_test("Team Member Login", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+
+            # Test 4: GET /api/projects/accessible - Team member should see the project
+            print("\n--- Testing GET /api/projects/accessible for team member ---")
+            response = team_member_session.get(f"{BACKEND_URL}/projects/accessible")
+            if response.status_code == 200:
+                accessible_projects = response.json()
+                project_found = False
+                for project in accessible_projects:
+                    if project["id"] == manager_project_id:
+                        project_found = True
+                        break
+                
+                if project_found:
+                    self.log_test("Team Member Project Access", True, "Team member can see project they're part of")
+                else:
+                    self.log_test("Team Member Project Access", False, "Team member cannot see project they're part of")
+            else:
+                self.log_test("Team Member Project Access", False, f"HTTP {response.status_code}: {response.text}")
+
+            # Test 5: Create task as manager and verify team member can see it
+            print("\n--- Testing task visibility for team members ---")
+            task_data = {
+                "title": "Team Collaboration Task",
+                "description": "Task to test team member access to project tasks",
+                "project_id": manager_project_id,
+                "status": "To Do"
+            }
+            
+            # Manager creates task
+            response = self.session.post(f"{BACKEND_URL}/tasks", json=task_data)
+            if response.status_code == 200:
+                team_task = response.json()
+                team_task_id = team_task["id"]
+                self.log_test("Manager Creates Team Task", True, f"Manager created task: {team_task['title']}")
+                
+                # Team member should be able to see tasks from projects they're part of
+                response = team_member_session.get(f"{BACKEND_URL}/tasks?project_id={manager_project_id}")
+                if response.status_code == 200:
+                    team_tasks = response.json()
+                    task_found = False
+                    for task in team_tasks:
+                        if task["id"] == team_task_id:
+                            task_found = True
+                            break
+                    
+                    if task_found:
+                        self.log_test("Team Member Task Access", True, "Team member can see tasks from projects they're part of")
+                    else:
+                        self.log_test("Team Member Task Access", False, "Team member cannot see tasks from projects they're part of")
+                else:
+                    self.log_test("Team Member Task Access", False, f"HTTP {response.status_code}: {response.text}")
+            else:
+                self.log_test("Manager Creates Team Task", False, f"HTTP {response.status_code}: {response.text}")
+
+            # Test 6: Test non-team-member access (should be denied)
+            print("\n--- Testing non-team-member access restrictions ---")
+            # Create another user who is NOT a team member
+            non_member_data = {
+                "name": "Jordan Smith",
+                "email": "jordan.smith@outsider.com",
+                "password": "OutsiderPass789!",
+                "role": "Team Member"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/auth/register", json=non_member_data)
+            if response.status_code == 200:
+                non_member_user = response.json()["user"]
+                non_member_session = requests.Session()
+                non_member_session.headers.update({"Authorization": f"Bearer {response.json()['access_token']}"})
+                
+                # Non-member should NOT see the project in accessible projects
+                response = non_member_session.get(f"{BACKEND_URL}/projects/accessible")
+                if response.status_code == 200:
+                    accessible_projects = response.json()
+                    project_found = False
+                    for project in accessible_projects:
+                        if project["id"] == manager_project_id:
+                            project_found = True
+                            break
+                    
+                    if not project_found:
+                        self.log_test("Non-Team-Member Project Restriction", True, "Non-team-member correctly cannot see project")
+                    else:
+                        self.log_test("Non-Team-Member Project Restriction", False, "Non-team-member can incorrectly see project")
+                
+                # Non-member should NOT be able to access project tasks
+                response = non_member_session.get(f"{BACKEND_URL}/tasks?project_id={manager_project_id}")
+                if response.status_code == 404:
+                    self.log_test("Non-Team-Member Task Restriction", True, "Non-team-member correctly denied access to project tasks")
+                else:
+                    self.log_test("Non-Team-Member Task Restriction", False, f"Expected 404, got {response.status_code}")
+            else:
+                self.log_test("Create Non-Member User", False, f"Failed to create non-member user: {response.text}")
+
+            # Test 7: Test edge cases
+            print("\n--- Testing edge cases ---")
+            
+            # Test invalid user ID in team update
+            invalid_team_data = {
+                "team_members": ["invalid-user-id-12345"]
+            }
+            response = self.session.put(f"{BACKEND_URL}/projects/{manager_project_id}/team", json=invalid_team_data)
+            # This should succeed but the invalid ID will just be ignored or handled gracefully
+            if response.status_code == 200:
+                self.log_test("Invalid User ID in Team Update", True, "Invalid user ID handled gracefully")
+            else:
+                self.log_test("Invalid User ID in Team Update", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test team update on non-existent project
+            response = self.session.put(f"{BACKEND_URL}/projects/non-existent-project-id/team", json=team_update_data)
+            if response.status_code == 404:
+                self.log_test("Team Update Non-Existent Project", True, "Non-existent project correctly returns 404")
+            else:
+                self.log_test("Team Update Non-Existent Project", False, f"Expected 404, got {response.status_code}")
+
+            # Test 8: Remove team member
+            print("\n--- Testing team member removal ---")
+            empty_team_data = {
+                "team_members": []
+            }
+            response = self.session.put(f"{BACKEND_URL}/projects/{manager_project_id}/team", json=empty_team_data)
+            if response.status_code == 200:
+                updated_project = response.json()
+                if len(updated_project.get("team_members", [])) == 0:
+                    self.log_test("Remove Team Member", True, "Successfully removed team member from project")
+                    
+                    # Verify team member can no longer see the project
+                    response = team_member_session.get(f"{BACKEND_URL}/projects/accessible")
+                    if response.status_code == 200:
+                        accessible_projects = response.json()
+                        project_found = False
+                        for project in accessible_projects:
+                            if project["id"] == manager_project_id:
+                                project_found = True
+                                break
+                        
+                        if not project_found:
+                            self.log_test("Team Member Access After Removal", True, "Team member correctly cannot see project after removal")
+                        else:
+                            self.log_test("Team Member Access After Removal", False, "Team member can still see project after removal")
+                else:
+                    self.log_test("Remove Team Member", False, "Team member not removed from project")
+            else:
+                self.log_test("Remove Team Member", False, f"HTTP {response.status_code}: {response.text}")
+
+            # Clean up test task
+            if 'team_task_id' in locals():
+                self.session.delete(f"{BACKEND_URL}/tasks/{team_task_id}")
+
+            return True
+            
+        except Exception as e:
+            self.log_test("Team Management System", False, f"Exception: {str(e)}")
+            return False
         
     def test_unauthorized_access(self):
         """Test unauthorized access to protected endpoints"""
