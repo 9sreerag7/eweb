@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Build a minimal project management web application with authentication, Kanban boards, drag-and-drop, and role-based access (Admin, Manager, Team Member)"
+user_problem_statement: "Build a minimal project management web application with authentication, Kanban boards, drag-and-drop, and role-based access (Admin, Manager, Team Member). Now implementing member permission restrictions: only team managers can create tasks (not project owners), members should see error messages when clicking restricted buttons, and files/comments should be visible to all team members."
 
 backend:
   - task: "Email/Password Authentication System"
