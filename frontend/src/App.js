@@ -1565,11 +1565,11 @@ const TaskForm = ({ onClose, onSubmit }) => {
 
   const fetchUsers = async () => {
     try {
-      // For now, we'll create a simple endpoint to get users
-      // Since we don't have a users endpoint, we'll use the current user as an example
-      setUsers([user]); // In a real app, this would fetch all team members
+      const response = await axios.get(`${API}/users`);
+      setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setUsers([user]); // Fallback to current user
     }
   };
 
