@@ -6,7 +6,7 @@ Additional Backend API Tests for Edge Cases and Error Handling
 import requests
 import json
 
-BACKEND_URL = "https://a7969c37-3e23-4ade-af09-9ba4e4321e78.preview.emergentagent.com/api"
+BACKEND_URL = "https://60777a23-ba2f-4025-8ff5-9b792169a72b.preview.emergentagent.com/api"
 
 def test_duplicate_registration():
     """Test duplicate user registration"""
