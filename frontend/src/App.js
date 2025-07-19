@@ -1234,7 +1234,143 @@ const TaskDetailModal = ({ task, onClose, onUpdate }) => {
   );
 };
 
-// Enhanced Kanban Board Component
+// Project Team Management Component
+const ProjectTeamManager = ({ project, onClose, onUpdate }) => {
+  const [users, setUsers] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState(project.team_members || []);
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/users`);
+      setUsers(response.data.filter(u => u.id !== project.owner_id)); // Exclude project owner
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const handleMemberToggle = (userId) => {
+    setSelectedMembers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await axios.put(`${API}/projects/${project.id}/team`, {
+        team_members: selectedMembers
+      });
+      onUpdate && onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Failed to update team:', error);
+      alert('Failed to update team members');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getUserById = (userId) => users.find(u => u.id === userId);
+  const projectOwner = users.find(u => u.id === project.owner_id) || user;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <h3 className="text-lg font-semibold mb-4">Manage Team - {project.title}</h3>
+        
+        {/* Project Owner */}
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Project Owner</h4>
+          <div className="bg-blue-50 p-2 rounded flex items-center justify-between">
+            <span className="text-sm text-blue-900">
+              👑 {projectOwner?.name} ({projectOwner?.role})
+            </span>
+          </div>
+        </div>
+
+        {/* Team Members Selection */}
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Team Members ({selectedMembers.length})
+          </h4>
+          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded">
+            {users.length === 0 ? (
+              <div className="p-4 text-center text-gray-500 text-sm">
+                No other users available
+              </div>
+            ) : (
+              users.map((u) => (
+                <div
+                  key={u.id}
+                  className={`p-3 border-b border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50 ${
+                    selectedMembers.includes(u.id) ? 'bg-green-50' : ''
+                  }`}
+                  onClick={() => handleMemberToggle(u.id)}
+                >
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">{u.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">({u.role})</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={selectedMembers.includes(u.id)}
+                    onChange={() => handleMemberToggle(u.id)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Current Team Members Display */}
+        {selectedMembers.length > 0 && (
+          <div className="mb-4">
+            <h5 className="text-xs font-medium text-gray-600 mb-2">Selected Members:</h5>
+            <div className="flex flex-wrap gap-2">
+              {selectedMembers.map(memberId => {
+                const member = getUserById(memberId);
+                return member ? (
+                  <span
+                    key={memberId}
+                    className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full"
+                  >
+                    {member.name}
+                  </span>
+                ) : null;
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
+          >
+            {loading ? 'Saving...' : 'Save Team'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 const KanbanBoard = () => {
   const { user, logout } = useAuth();
   const [projects, setProjects] = useState([]);
