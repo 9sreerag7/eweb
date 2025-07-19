@@ -1551,9 +1551,28 @@ const KanbanBoard = () => {
               👥 Team
             </button>
             <button
-              onClick={() => setShowTaskForm(true)}
+              onClick={() => {
+                if (!selectedProject) {
+                  alert('Please select a project first');
+                } else if (selectedProject.owner_id !== user?.id) {
+                  alert('Only project owners can create tasks. Contact the project owner to assign tasks to you.');
+                } else {
+                  setShowTaskForm(true);
+                }
+              }}
               disabled={!selectedProject}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                selectedProject && selectedProject.owner_id !== user?.id
+                  ? 'bg-gray-400 text-gray-700 cursor-not-allowed opacity-50'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'
+              }`}
+              title={
+                !selectedProject 
+                  ? 'Select a project first' 
+                  : selectedProject.owner_id !== user?.id 
+                    ? 'Only project owners can create tasks'
+                    : 'Create a new task'
+              }
             >
               New Task
             </button>
