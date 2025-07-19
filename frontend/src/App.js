@@ -1650,9 +1650,17 @@ const KanbanBoard = () => {
             <button
               onClick={() => {
                 if (!selectedProject) {
-                  alert('Please select a project first');
+                  setAlertModal({ 
+                    show: true, 
+                    title: 'No Project Selected', 
+                    message: 'Please select a project first before managing team members.' 
+                  });
                 } else if (selectedProject.owner_id !== user?.id) {
-                  alert('Only project owners can manage team members. You are a team member of this project.');
+                  setAlertModal({ 
+                    show: true, 
+                    title: 'Permission Denied', 
+                    message: 'Only project owners can manage team members. You are a team member of this project.' 
+                  });
                 } else {
                   setShowTeamManager(true);
                 }
