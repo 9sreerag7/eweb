@@ -225,20 +225,41 @@ backend:
           agent: "testing"
           comment: "✅ Complete file attachment system working perfectly: POST /api/files (upload with base64 encoding), GET /api/files?task_id={id} (get files for task), DELETE /api/files/{file_id} (delete file). File size validation working (10MB limit properly enforced). Base64 storage and retrieval working correctly with proper access control."
 
-  - task: "Comments System"
+  - task: "Manager-only Task Creation"
     implemented: true
-    working: true
-    file: "/app/backend/server.py"
+    working: "NA"
+    file: "/app/backend/server.py, /app/frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
           agent: "main"
-          comment: "Starting implementation of threaded comments system for tasks"
-        - working: true
-          agent: "testing"
-          comment: "✅ Complete comments system working perfectly: POST /api/comments (create comment), GET /api/comments?task_id={id} (get comments for task), PUT /api/comments/{id} (update comment), DELETE /api/comments/{id} (delete comment). Threaded comments with parent_id working correctly. Auto-notifications for new comments working. All CRUD operations tested successfully."
+          comment: "Updated task creation to only allow users with 'Manager' role. Backend now checks for Manager role instead of project ownership. Frontend shows error messages instead of disabled buttons."
+
+  - task: "Enhanced Button UX with Error Messages"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Updated task creation and team management buttons to show error messages instead of being disabled. Users can click buttons and get clear feedback about permissions."
+
+  - task: "Files and Comments Visibility"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Task detail modal includes FileUpload and Comments components that are visible to all team members when they click on tasks. Backend already allows all team members to access files and comments."
 
 frontend:
   - task: "Authentication UI with React Context"
