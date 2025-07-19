@@ -165,6 +165,18 @@ backend:
           agent: "testing"
           comment: "✅ Role-based access control implemented and working. Users can register with different roles (Admin, Manager, Team Member). Project ownership properly controls access to tasks - users can only access tasks from their own projects."
 
+  - task: "Project Team Management System"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Added /users endpoint and completed project team management: Project owners can add team members, team members see all projects they're part of, proper workflow now works as: 1) Manager creates project → adds team members 2) Team members see project in their list 3) Manager creates tasks → assigns to team members who can already access the project"
+
   - task: "Notifications System"
     implemented: true
     working: true
