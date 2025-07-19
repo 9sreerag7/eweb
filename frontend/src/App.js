@@ -1379,6 +1379,7 @@ const KanbanBoard = () => {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null);
 
