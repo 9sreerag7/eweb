@@ -341,58 +341,41 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
 @api_router.get("/tasks", response_model=List[Task])
 async def get_tasks(project_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
     if project_id:
-        # Verify project access OR check if user has assigned tasks in this project
+        # Verify project access (owner OR team member OR has assigned tasks)
         project = await db.projects.find_one({"id": project_id})
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        # Allow access if user owns the project OR has tasks assigned to them in this project
-        if project["owner_id"] != current_user.id:
-            # Check if user has any assigned tasks in this project
-            assigned_tasks = await db.tasks.find({
-                "project_id": project_id, 
-                "assigned_to": current_user.id
-            }).to_list(1)
-            if not assigned_tasks:
-                raise HTTPException(status_code=404, detail="Project not found")
+        # Check if user has access (owner, team member, or assigned tasks)
+        has_access = (
+            project["owner_id"] == current_user.id or  # Owner
+            current_user.id in project.get("team_members", []) or  # Team member
+            bool(await db.tasks.find_one({"project_id": project_id, "assigned_to": current_user.id}))  # Has assigned tasks
+        )
+        
+        if not has_access:
+            raise HTTPException(status_code=404, detail="Project not found")
         
         tasks = await db.tasks.find({"project_id": project_id}).to_list(1000)
     else:
-        # Get all tasks for user's projects AND tasks assigned to the user
-        user_projects = await db.projects.find({"owner_id": current_user.id}).to_list(1000)
-        user_project_ids = [p["id"] for p in user_projects]
+        # Get all accessible projects
+        accessible_projects = await db.projects.find({
+            "$or": [
+                {"owner_id": current_user.id},
+                {"team_members": current_user.id}
+            ]
+        }).to_list(1000)
+        project_ids = [p["id"] for p in accessible_projects]
         
-        # Get tasks from owned projects OR assigned to user
+        # Get tasks from accessible projects OR assigned to user
         tasks = await db.tasks.find({
             "$or": [
-                {"project_id": {"$in": user_project_ids}},
+                {"project_id": {"$in": project_ids}},
                 {"assigned_to": current_user.id}
             ]
         }).to_list(1000)
     
     return [Task(**task) for task in tasks]
-
-@api_router.get("/projects/accessible", response_model=List[Project])
-async def get_accessible_projects(current_user: User = Depends(get_current_user)):
-    """Get projects user owns OR has tasks assigned in"""
-    # Get owned projects
-    owned_projects = await db.projects.find({"owner_id": current_user.id}).to_list(1000)
-    
-    # Get projects where user has assigned tasks
-    assigned_tasks = await db.tasks.find({"assigned_to": current_user.id}).to_list(1000)
-    assigned_project_ids = list(set([task["project_id"] for task in assigned_tasks]))
-    
-    # Get projects for assigned tasks (excluding already owned ones)
-    owned_project_ids = [p["id"] for p in owned_projects]
-    additional_project_ids = [pid for pid in assigned_project_ids if pid not in owned_project_ids]
-    
-    additional_projects = []
-    if additional_project_ids:
-        additional_projects = await db.projects.find({"id": {"$in": additional_project_ids}}).to_list(1000)
-    
-    # Combine and return all accessible projects
-    all_projects = owned_projects + additional_projects
-    return [Project(**project) for project in all_projects]
 
 @api_router.put("/tasks/{task_id}/status")
 async def update_task_status(task_id: str, status: dict, current_user: User = Depends(get_current_user)):
