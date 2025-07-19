@@ -54,7 +54,7 @@ def debug_team_management():
     # 3. Register team member
     team_member_data = {
         "name": "Debug Team Member",
-        "email": "debug.teammember@test.com",
+        "email": f"debug.teammember.{timestamp}@test.com",
         "password": "TeamPass123!",
         "role": "Team Member"
     }
