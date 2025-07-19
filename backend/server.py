@@ -275,6 +275,17 @@ async def get_projects(current_user: User = Depends(get_current_user)):
     projects = await db.projects.find({"owner_id": current_user.id}).to_list(1000)
     return [Project(**project) for project in projects]
 
+@api_router.get("/projects/accessible", response_model=List[Project])
+async def get_accessible_projects(current_user: User = Depends(get_current_user)):
+    """Get projects user owns OR is a team member of"""
+    projects = await db.projects.find({
+        "$or": [
+            {"owner_id": current_user.id},  # Projects user owns
+            {"team_members": current_user.id}  # Projects user is a team member of
+        ]
+    }).to_list(1000)
+    return [Project(**project) for project in projects]
+
 @api_router.get("/projects/{project_id}", response_model=Project)
 async def get_project(project_id: str, current_user: User = Depends(get_current_user)):
     project = await db.projects.find_one({"id": project_id, "owner_id": current_user.id})
@@ -298,17 +309,6 @@ async def update_project_team(project_id: str, team_update: ProjectTeamUpdate, c
     # Get updated project
     updated_project = await db.projects.find_one({"id": project_id})
     return Project(**updated_project)
-
-@api_router.get("/projects/accessible", response_model=List[Project])
-async def get_accessible_projects(current_user: User = Depends(get_current_user)):
-    """Get projects user owns OR is a team member of"""
-    projects = await db.projects.find({
-        "$or": [
-            {"owner_id": current_user.id},  # Projects user owns
-            {"team_members": current_user.id}  # Projects user is a team member of
-        ]
-    }).to_list(1000)
-    return [Project(**project) for project in projects]
 
 # Task Routes
 @api_router.post("/tasks", response_model=Task)
