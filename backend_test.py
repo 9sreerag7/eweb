@@ -945,6 +945,233 @@ class ProjectManagementTester:
         self.session.headers.update(original_headers)
         return success
         
+    def test_manager_only_task_creation(self):
+        """Test manager-only task creation restrictions - NEW FEATURE"""
+        print("\n=== Testing Manager-Only Task Creation ===")
+        
+        if not self.auth_token or not self.project_id:
+            self.log_test("Manager-Only Task Creation", False, "No auth token or project ID available")
+            return False
+
+        # Store original manager data
+        manager_token = self.auth_token
+        manager_user = self.user_data
+        manager_project_id = self.project_id
+        
+        try:
+            # Test 1: Manager should be able to create tasks (current user is Manager)
+            print("\n--- Testing Manager can create tasks ---")
+            task_data = {
+                "title": "Manager Task Creation Test",
+                "description": "Task created by manager to test role-based restrictions",
+                "project_id": manager_project_id,
+                "status": "To Do"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/tasks", json=task_data)
+            if response.status_code == 200:
+                manager_task = response.json()
+                manager_task_id = manager_task["id"]
+                self.log_test("Manager Task Creation", True, f"Manager successfully created task: {manager_task['title']}")
+            else:
+                self.log_test("Manager Task Creation", False, f"Manager failed to create task: HTTP {response.status_code}: {response.text}")
+                return False
+
+            # Test 2: Create Team Member user and test they CANNOT create tasks
+            print("\n--- Testing Team Member cannot create tasks ---")
+            team_member_data = {
+                "name": "Emma Wilson",
+                "email": "emma.wilson@teammember.com",
+                "password": "TeamMemberPass123!",
+                "role": "Team Member"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/auth/register", json=team_member_data)
+            if response.status_code == 200:
+                team_member_token_data = response.json()
+                team_member_session = requests.Session()
+                team_member_session.headers.update({"Authorization": f"Bearer {team_member_token_data['access_token']}"})
+                
+                # Add team member to project so they have access
+                team_update_data = {
+                    "team_members": [team_member_token_data["user"]["id"]]
+                }
+                self.session.put(f"{BACKEND_URL}/projects/{manager_project_id}/team", json=team_update_data)
+                
+                # Team member tries to create task - should get 403
+                team_member_task_data = {
+                    "title": "Team Member Task Attempt",
+                    "description": "Task creation attempt by team member (should fail)",
+                    "project_id": manager_project_id,
+                    "status": "To Do"
+                }
+                
+                response = team_member_session.post(f"{BACKEND_URL}/tasks", json=team_member_task_data)
+                if response.status_code == 403:
+                    self.log_test("Team Member Task Creation Restriction", True, "Team Member correctly denied task creation (403)")
+                else:
+                    self.log_test("Team Member Task Creation Restriction", False, f"Expected 403, got {response.status_code}: {response.text}")
+                
+                # Test 3: Verify team member can still access files and comments
+                print("\n--- Testing Team Member can access files and comments ---")
+                
+                # Upload file as manager first
+                import base64
+                test_content = "Test file content for team member access verification."
+                encoded_content = base64.b64encode(test_content.encode()).decode()
+                
+                file_data = {
+                    "task_id": manager_task_id,
+                    "filename": "team_access_test.txt",
+                    "content_type": "text/plain",
+                    "file_data": encoded_content
+                }
+                
+                response = self.session.post(f"{BACKEND_URL}/files", json=file_data)
+                if response.status_code == 200:
+                    file_attachment = response.json()
+                    file_id = file_attachment["id"]
+                    
+                    # Team member should be able to access files
+                    response = team_member_session.get(f"{BACKEND_URL}/files?task_id={manager_task_id}")
+                    if response.status_code == 200:
+                        files = response.json()
+                        if len(files) > 0:
+                            self.log_test("Team Member File Access", True, f"Team member can access {len(files)} files")
+                        else:
+                            self.log_test("Team Member File Access", False, "Team member cannot see files")
+                    else:
+                        self.log_test("Team Member File Access", False, f"HTTP {response.status_code}: {response.text}")
+                    
+                    # Team member should be able to upload files too
+                    team_file_data = {
+                        "task_id": manager_task_id,
+                        "filename": "team_member_upload.txt",
+                        "content_type": "text/plain",
+                        "file_data": base64.b64encode("Team member file content".encode()).decode()
+                    }
+                    
+                    response = team_member_session.post(f"{BACKEND_URL}/files", json=team_file_data)
+                    if response.status_code == 200:
+                        self.log_test("Team Member File Upload", True, "Team member can upload files")
+                    else:
+                        self.log_test("Team Member File Upload", False, f"HTTP {response.status_code}: {response.text}")
+                
+                # Create comment as manager first
+                comment_data = {
+                    "task_id": manager_task_id,
+                    "content": "Manager comment for team member access test."
+                }
+                
+                response = self.session.post(f"{BACKEND_URL}/comments", json=comment_data)
+                if response.status_code == 200:
+                    comment = response.json()
+                    comment_id = comment["id"]
+                    
+                    # Team member should be able to access comments
+                    response = team_member_session.get(f"{BACKEND_URL}/comments?task_id={manager_task_id}")
+                    if response.status_code == 200:
+                        comments = response.json()
+                        if len(comments) > 0:
+                            self.log_test("Team Member Comment Access", True, f"Team member can access {len(comments)} comments")
+                        else:
+                            self.log_test("Team Member Comment Access", False, "Team member cannot see comments")
+                    else:
+                        self.log_test("Team Member Comment Access", False, f"HTTP {response.status_code}: {response.text}")
+                    
+                    # Team member should be able to create comments too
+                    team_comment_data = {
+                        "task_id": manager_task_id,
+                        "content": "Team member comment on manager's task."
+                    }
+                    
+                    response = team_member_session.post(f"{BACKEND_URL}/comments", json=team_comment_data)
+                    if response.status_code == 200:
+                        self.log_test("Team Member Comment Creation", True, "Team member can create comments")
+                    else:
+                        self.log_test("Team Member Comment Creation", False, f"HTTP {response.status_code}: {response.text}")
+            else:
+                self.log_test("Create Team Member User", False, f"Failed to create team member: {response.text}")
+                return False
+
+            # Test 4: Create Admin user and test they CANNOT create tasks
+            print("\n--- Testing Admin cannot create tasks ---")
+            admin_data = {
+                "name": "Michael Chen",
+                "email": "michael.chen@admin.com",
+                "password": "AdminPass456!",
+                "role": "Admin"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/auth/register", json=admin_data)
+            if response.status_code == 200:
+                admin_token_data = response.json()
+                admin_session = requests.Session()
+                admin_session.headers.update({"Authorization": f"Bearer {admin_token_data['access_token']}"})
+                
+                # Add admin to project so they have access
+                team_update_data = {
+                    "team_members": [admin_token_data["user"]["id"]]
+                }
+                self.session.put(f"{BACKEND_URL}/projects/{manager_project_id}/team", json=team_update_data)
+                
+                # Admin tries to create task - should get 403
+                admin_task_data = {
+                    "title": "Admin Task Attempt",
+                    "description": "Task creation attempt by admin (should fail)",
+                    "project_id": manager_project_id,
+                    "status": "To Do"
+                }
+                
+                response = admin_session.post(f"{BACKEND_URL}/tasks", json=admin_task_data)
+                if response.status_code == 403:
+                    self.log_test("Admin Task Creation Restriction", True, "Admin correctly denied task creation (403)")
+                else:
+                    self.log_test("Admin Task Creation Restriction", False, f"Expected 403, got {response.status_code}: {response.text}")
+            else:
+                self.log_test("Create Admin User", False, f"Failed to create admin: {response.text}")
+
+            # Test 5: Test Manager without project access gets 404
+            print("\n--- Testing Manager without project access ---")
+            another_manager_data = {
+                "name": "Lisa Thompson",
+                "email": "lisa.thompson@manager2.com",
+                "password": "ManagerPass789!",
+                "role": "Manager"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/auth/register", json=another_manager_data)
+            if response.status_code == 200:
+                another_manager_token_data = response.json()
+                another_manager_session = requests.Session()
+                another_manager_session.headers.update({"Authorization": f"Bearer {another_manager_token_data['access_token']}"})
+                
+                # Manager tries to create task in project they don't have access to - should get 404
+                unauthorized_task_data = {
+                    "title": "Unauthorized Manager Task",
+                    "description": "Task creation attempt by manager without project access",
+                    "project_id": manager_project_id,
+                    "status": "To Do"
+                }
+                
+                response = another_manager_session.post(f"{BACKEND_URL}/tasks", json=unauthorized_task_data)
+                if response.status_code == 404:
+                    self.log_test("Manager Without Project Access", True, "Manager without project access correctly denied (404)")
+                else:
+                    self.log_test("Manager Without Project Access", False, f"Expected 404, got {response.status_code}: {response.text}")
+            else:
+                self.log_test("Create Another Manager User", False, f"Failed to create another manager: {response.text}")
+
+            # Clean up test task
+            if 'manager_task_id' in locals():
+                self.session.delete(f"{BACKEND_URL}/tasks/{manager_task_id}")
+
+            return True
+            
+        except Exception as e:
+            self.log_test("Manager-Only Task Creation", False, f"Exception: {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run all backend tests in sequence"""
         print("🚀 Starting Backend API Tests for Project Management App")
@@ -987,6 +1214,12 @@ class ProjectManagementTester:
         print("🎯 TESTING TEAM MANAGEMENT SYSTEM - HIGH PRIORITY")
         print("=" * 60)
         self.test_team_management_system()
+        
+        # CRITICAL: Test Manager-Only Task Creation (LATEST FEATURE)
+        print("\n" + "=" * 60)
+        print("🔥 TESTING MANAGER-ONLY TASK CREATION - CRITICAL NEW FEATURE")
+        print("=" * 60)
+        self.test_manager_only_task_creation()
         
         # Clean up - delete the test task last
         self.test_delete_task()
