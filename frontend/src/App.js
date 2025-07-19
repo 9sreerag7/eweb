@@ -1527,13 +1527,19 @@ const KanbanBoard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className={`shadow-sm border-b transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">TaskFlow</h1>
+              <h1 className={`text-3xl font-bold transition-colors duration-300 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>TaskFlow</h1>
               <span className="ml-4 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
                 {user?.role}
               </span>
