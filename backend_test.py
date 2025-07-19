@@ -731,6 +731,19 @@ class ProjectManagementTester:
         self.test_create_task()
         self.test_get_tasks_for_project()
         self.test_update_task_status()
+        
+        # NEW FEATURE TESTS
+        print("\n" + "=" * 60)
+        print("🆕 TESTING NEW FEATURES")
+        print("=" * 60)
+        
+        # Test all new backend features
+        self.test_notifications_system()
+        self.test_file_attachments_system()
+        self.test_comments_system()
+        self.test_analytics_system()
+        
+        # Clean up - delete the test task last
         self.test_delete_task()
         
         # Print summary
