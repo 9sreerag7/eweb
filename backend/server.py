@@ -251,6 +251,13 @@ async def login(user_login: UserLogin):
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+# User Routes
+@api_router.get("/users", response_model=List[User])
+async def get_users(current_user: User = Depends(get_current_user)):
+    """Get all users for team management (authenticated users only)"""
+    users = await db.users.find({}).to_list(1000)
+    return [User(**user) for user in users]
+
 # Project Routes
 @api_router.post("/projects", response_model=Project)
 async def create_project(project: ProjectCreate, current_user: User = Depends(get_current_user)):
