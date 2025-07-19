@@ -1922,9 +1922,11 @@ const App = () => {
 
   return (
     <div className="App">
-      <AuthProvider>
-        <AuthHandler authMode={authMode} setAuthMode={setAuthMode} />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthHandler authMode={authMode} setAuthMode={setAuthMode} />
+        </AuthProvider>
+      </ThemeProvider>
     </div>
   );
 };
