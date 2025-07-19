@@ -257,7 +257,8 @@ async def create_project(project: ProjectCreate, current_user: User = Depends(ge
     project_obj = Project(
         title=project.title,
         description=project.description,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        team_members=[]  # Initialize with empty team
     )
     await db.projects.insert_one(project_obj.dict())
     return project_obj
@@ -273,6 +274,34 @@ async def get_project(project_id: str, current_user: User = Depends(get_current_
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return Project(**project)
+
+@api_router.put("/projects/{project_id}/team", response_model=Project)
+async def update_project_team(project_id: str, team_update: ProjectTeamUpdate, current_user: User = Depends(get_current_user)):
+    """Add/remove team members from project (only project owner can do this)"""
+    project = await db.projects.find_one({"id": project_id, "owner_id": current_user.id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found or you're not the owner")
+    
+    # Update team members
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"team_members": team_update.team_members}}
+    )
+    
+    # Get updated project
+    updated_project = await db.projects.find_one({"id": project_id})
+    return Project(**updated_project)
+
+@api_router.get("/projects/accessible", response_model=List[Project])
+async def get_accessible_projects(current_user: User = Depends(get_current_user)):
+    """Get projects user owns OR is a team member of"""
+    projects = await db.projects.find({
+        "$or": [
+            {"owner_id": current_user.id},  # Projects user owns
+            {"team_members": current_user.id}  # Projects user is a team member of
+        ]
+    }).to_list(1000)
+    return [Project(**project) for project in projects]
 
 # Task Routes
 @api_router.post("/tasks", response_model=Task)
