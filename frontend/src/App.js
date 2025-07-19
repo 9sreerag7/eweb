@@ -1434,10 +1434,19 @@ const KanbanBoard = () => {
                       key={task.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, task)}
-                      className="bg-white p-4 rounded-lg shadow-sm border cursor-move hover:shadow-md transition-shadow"
+                      className={`bg-white p-4 rounded-lg shadow-sm border cursor-move hover:shadow-md transition-shadow ${
+                        task.assigned_to === user?.id ? 'border-l-4 border-l-blue-500' : ''
+                      }`}
                       onClick={() => setSelectedTask(task)}
                     >
-                      <h4 className="font-medium text-gray-900 mb-2">{task.title}</h4>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-gray-900">{task.title}</h4>
+                        {task.assigned_to === user?.id && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Assigned to me
+                          </span>
+                        )}
+                      </div>
                       {task.description && (
                         <p className="text-sm text-gray-600 mb-3 truncate">{task.description}</p>
                       )}
