@@ -1407,11 +1407,15 @@ const ProjectTeamManager = ({ project, onClose, onUpdate }) => {
 };
 // Custom Alert Modal Component
 const AlertModal = ({ show, title, message, onClose }) => {
+  const { theme } = useTheme();
+  
   if (!show) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <div className={`rounded-lg p-6 w-full max-w-md mx-4 transition-colors duration-300 ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
         <div className="flex items-center mb-4">
           <div className="flex-shrink-0">
             <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1419,11 +1423,15 @@ const AlertModal = ({ show, title, message, onClose }) => {
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+            <h3 className={`text-lg font-medium transition-colors duration-300 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>{title}</h3>
           </div>
         </div>
         <div className="mb-6">
-          <p className="text-sm text-gray-700">{message}</p>
+          <p className={`text-sm transition-colors duration-300 ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+          }`}>{message}</p>
         </div>
         <div className="flex justify-end">
           <button
