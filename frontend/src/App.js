@@ -1585,14 +1585,20 @@ const KanbanBoard = () => {
         {/* Project Selection & Actions */}
         <div className="flex flex-wrap justify-between items-center mb-8">
           <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Project:</label>
+            <label className={`text-sm font-medium transition-colors duration-300 ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+            }`}>Project:</label>
             <select
               value={selectedProject?.id || ''}
               onChange={(e) => {
                 const project = projects.find(p => p.id === e.target.value);
                 setSelectedProject(project);
               }}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className={`border rounded-md px-3 py-2 text-sm transition-colors duration-300 ${
+                theme === 'dark' 
+                  ? 'border-gray-600 bg-gray-800 text-white' 
+                  : 'border-gray-300 bg-white text-gray-900'
+              }`}
             >
               {projects.map(project => (
                 <option key={project.id} value={project.id}>{project.title}</option>
