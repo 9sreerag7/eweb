@@ -1674,9 +1674,17 @@ const KanbanBoard = () => {
             <button
               onClick={() => {
                 if (!selectedProject) {
-                  alert('Please select a project first');
+                  setAlertModal({ 
+                    show: true, 
+                    title: 'No Project Selected', 
+                    message: 'Please select a project first before creating tasks.' 
+                  });
                 } else if (user?.role !== "Manager") {
-                  alert('Only team managers can create tasks. Contact a team manager to create tasks.');
+                  setAlertModal({ 
+                    show: true, 
+                    title: 'Permission Denied', 
+                    message: 'Only team managers can create tasks. Contact a team manager to create tasks for you.' 
+                  });
                 } else {
                   setShowTaskForm(true);
                 }
