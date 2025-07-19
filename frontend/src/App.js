@@ -1407,6 +1407,7 @@ const ProjectTeamManager = ({ project, onClose, onUpdate }) => {
 };
 const KanbanBoard = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [tasks, setTasks] = useState([]);
