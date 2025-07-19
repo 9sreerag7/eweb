@@ -1258,7 +1258,8 @@ const KanbanBoard = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get(`${API}/projects`);
+      // Use new endpoint that shows both owned projects and projects with assigned tasks
+      const response = await axios.get(`${API}/projects/accessible`);
       setProjects(response.data);
       if (response.data.length > 0 && !selectedProject) {
         setSelectedProject(response.data[0]);
