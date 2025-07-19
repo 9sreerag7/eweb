@@ -343,6 +343,329 @@ async def delete_task(task_id: str, current_user: User = Depends(get_current_use
     
     return {"message": "Task deleted successfully"}
 
+# Notification Routes
+@api_router.post("/notifications", response_model=Notification)
+async def create_notification(notification: NotificationCreate, current_user: User = Depends(get_current_user)):
+    notification_obj = Notification(**notification.dict())
+    await db.notifications.insert_one(notification_obj.dict())
+    return notification_obj
+
+@api_router.get("/notifications", response_model=List[Notification])
+async def get_notifications(current_user: User = Depends(get_current_user)):
+    notifications = await db.notifications.find({"user_id": current_user.id}).sort("created_at", -1).to_list(100)
+    return [Notification(**notification) for notification in notifications]
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, current_user: User = Depends(get_current_user)):
+    result = await db.notifications.update_one(
+        {"id": notification_id, "user_id": current_user.id},
+        {"$set": {"read": True}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"message": "Notification marked as read"}
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_notification_count(current_user: User = Depends(get_current_user)):
+    count = await db.notifications.count_documents({"user_id": current_user.id, "read": False})
+    return {"count": count}
+
+# File Attachment Routes
+@api_router.post("/files", response_model=FileAttachment)
+async def upload_file(file: FileUpload, current_user: User = Depends(get_current_user)):
+    # Verify task exists and user has access
+    task = await db.tasks.find_one({"id": file.task_id})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    project = await db.projects.find_one({"id": task["project_id"], "owner_id": current_user.id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Calculate file size from base64 data
+    import base64
+    try:
+        decoded_data = base64.b64decode(file.file_data)
+        file_size = len(decoded_data)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid file data")
+    
+    # Check file size limit (10MB)
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size too large (max 10MB)")
+    
+    file_obj = FileAttachment(
+        task_id=file.task_id,
+        filename=file.filename,
+        content_type=file.content_type,
+        file_data=file.file_data,
+        file_size=file_size,
+        uploaded_by=current_user.id
+    )
+    await db.file_attachments.insert_one(file_obj.dict())
+    
+    # Create notification for task owner/assignee
+    task_owner = await db.users.find_one({"id": task["created_by"]})
+    if task_owner and task_owner["id"] != current_user.id:
+        notification = Notification(
+            user_id=task_owner["id"],
+            title="File Uploaded",
+            message=f"{current_user.name} uploaded a file to task: {task['title']}",
+            type="file_upload",
+            task_id=file.task_id,
+            project_id=task["project_id"]
+        )
+        await db.notifications.insert_one(notification.dict())
+    
+    return file_obj
+
+@api_router.get("/files", response_model=List[FileAttachment])
+async def get_files(task_id: str, current_user: User = Depends(get_current_user)):
+    # Verify task access
+    task = await db.tasks.find_one({"id": task_id})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    project = await db.projects.find_one({"id": task["project_id"], "owner_id": current_user.id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.file_attachments.find({"task_id": task_id}).sort("uploaded_at", -1).to_list(100)
+    return [FileAttachment(**file) for file in files]
+
+@api_router.delete("/files/{file_id}")
+async def delete_file(file_id: str, current_user: User = Depends(get_current_user)):
+    file_doc = await db.file_attachments.find_one({"id": file_id})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Verify access through task
+    task = await db.tasks.find_one({"id": file_doc["task_id"]})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    project = await db.projects.find_one({"id": task["project_id"], "owner_id": current_user.id})
+    if not project and file_doc["uploaded_by"] != current_user.id:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    
+    result = await db.file_attachments.delete_one({"id": file_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return {"message": "File deleted successfully"}
+
+# Comment Routes
+@api_router.post("/comments", response_model=Comment)
+async def create_comment(comment: CommentCreate, current_user: User = Depends(get_current_user)):
+    # Verify task access
+    task = await db.tasks.find_one({"id": comment.task_id})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    project = await db.projects.find_one({"id": task["project_id"], "owner_id": current_user.id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    comment_obj = Comment(
+        task_id=comment.task_id,
+        user_id=current_user.id,
+        user_name=current_user.name,
+        content=comment.content,
+        parent_id=comment.parent_id
+    )
+    await db.comments.insert_one(comment_obj.dict())
+    
+    # Create notification for task owner/assignee
+    task_owner = await db.users.find_one({"id": task["created_by"]})
+    if task_owner and task_owner["id"] != current_user.id:
+        notification = Notification(
+            user_id=task_owner["id"],
+            title="New Comment",
+            message=f"{current_user.name} commented on task: {task['title']}",
+            type="comment",
+            task_id=comment.task_id,
+            project_id=task["project_id"]
+        )
+        await db.notifications.insert_one(notification.dict())
+    
+    return comment_obj
+
+@api_router.get("/comments", response_model=List[Comment])
+async def get_comments(task_id: str, current_user: User = Depends(get_current_user)):
+    # Verify task access
+    task = await db.tasks.find_one({"id": task_id})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    project = await db.projects.find_one({"id": task["project_id"], "owner_id": current_user.id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    comments = await db.comments.find({"task_id": task_id}).sort("created_at", 1).to_list(1000)
+    return [Comment(**comment) for comment in comments]
+
+@api_router.put("/comments/{comment_id}", response_model=Comment)
+async def update_comment(comment_id: str, comment_update: CommentUpdate, current_user: User = Depends(get_current_user)):
+    comment = await db.comments.find_one({"id": comment_id, "user_id": current_user.id})
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found or not owned by user")
+    
+    result = await db.comments.update_one(
+        {"id": comment_id},
+        {"$set": {"content": comment_update.content, "updated_at": datetime.utcnow()}}
+    )
+    
+    updated_comment = await db.comments.find_one({"id": comment_id})
+    return Comment(**updated_comment)
+
+@api_router.delete("/comments/{comment_id}")
+async def delete_comment(comment_id: str, current_user: User = Depends(get_current_user)):
+    comment = await db.comments.find_one({"id": comment_id, "user_id": current_user.id})
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found or not owned by user")
+    
+    result = await db.comments.delete_one({"id": comment_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    return {"message": "Comment deleted successfully"}
+
+# Progress Analytics Routes
+@api_router.get("/analytics/progress", response_model=List[ProjectProgress])
+async def get_progress_analytics(current_user: User = Depends(get_current_user)):
+    projects = await db.projects.find({"owner_id": current_user.id}).to_list(1000)
+    result = []
+    
+    for project in projects:
+        tasks = await db.tasks.find({"project_id": project["id"]}).to_list(1000)
+        
+        total_tasks = len(tasks)
+        completed_tasks = len([t for t in tasks if t["status"] == "Done"])
+        in_progress_tasks = len([t for t in tasks if t["status"] == "In Progress"])
+        todo_tasks = len([t for t in tasks if t["status"] == "To Do"])
+        
+        # Calculate overdue tasks
+        overdue_tasks = 0
+        current_date = datetime.utcnow()
+        for task in tasks:
+            if task.get("due_date") and task["status"] != "Done":
+                due_date = task["due_date"] if isinstance(task["due_date"], datetime) else datetime.fromisoformat(task["due_date"].replace('Z', '+00:00'))
+                if due_date < current_date:
+                    overdue_tasks += 1
+        
+        completion_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        
+        stats = ProgressStats(
+            total_tasks=total_tasks,
+            completed_tasks=completed_tasks,
+            in_progress_tasks=in_progress_tasks,
+            todo_tasks=todo_tasks,
+            completion_rate=round(completion_rate, 2),
+            overdue_tasks=overdue_tasks
+        )
+        
+        result.append(ProjectProgress(
+            project_id=project["id"],
+            project_title=project["title"],
+            stats=stats
+        ))
+    
+    return result
+
+@api_router.get("/analytics/overview")
+async def get_analytics_overview(current_user: User = Depends(get_current_user)):
+    # Get all user's projects
+    projects = await db.projects.find({"owner_id": current_user.id}).to_list(1000)
+    project_ids = [p["id"] for p in projects]
+    
+    # Get all tasks for user's projects
+    all_tasks = await db.tasks.find({"project_id": {"$in": project_ids}}).to_list(1000)
+    
+    # Calculate overall statistics
+    total_projects = len(projects)
+    total_tasks = len(all_tasks)
+    completed_tasks = len([t for t in all_tasks if t["status"] == "Done"])
+    in_progress_tasks = len([t for t in all_tasks if t["status"] == "In Progress"])
+    todo_tasks = len([t for t in all_tasks if t["status"] == "To Do"])
+    
+    # Calculate overdue tasks
+    overdue_tasks = 0
+    current_date = datetime.utcnow()
+    for task in all_tasks:
+        if task.get("due_date") and task["status"] != "Done":
+            try:
+                due_date = task["due_date"] if isinstance(task["due_date"], datetime) else datetime.fromisoformat(task["due_date"].replace('Z', '+00:00'))
+                if due_date < current_date:
+                    overdue_tasks += 1
+            except:
+                continue
+    
+    # Calculate task creation trend (last 7 days)
+    week_ago = current_date - timedelta(days=7)
+    recent_tasks = []
+    for i in range(7):
+        day = week_ago + timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        day_tasks = len([
+            t for t in all_tasks 
+            if day_start <= (t["created_at"] if isinstance(t["created_at"], datetime) else datetime.fromisoformat(t["created_at"].replace('Z', '+00:00'))) <= day_end
+        ])
+        
+        recent_tasks.append({
+            "date": day.strftime("%Y-%m-%d"),
+            "tasks_created": day_tasks
+        })
+    
+    return {
+        "total_projects": total_projects,
+        "total_tasks": total_tasks,
+        "completed_tasks": completed_tasks,
+        "in_progress_tasks": in_progress_tasks,
+        "todo_tasks": todo_tasks,
+        "overdue_tasks": overdue_tasks,
+        "completion_rate": round((completed_tasks / total_tasks * 100) if total_tasks > 0 else 0, 2),
+        "recent_tasks_trend": recent_tasks,
+        "status_distribution": {
+            "To Do": todo_tasks,
+            "In Progress": in_progress_tasks,
+            "Done": completed_tasks
+        }
+    }
+
+# Helper function to create due date notifications
+async def create_due_date_notifications():
+    """Background task to create notifications for upcoming due dates"""
+    tomorrow = datetime.utcnow() + timedelta(days=1)
+    tomorrow_start = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_end = tomorrow.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    # Find tasks due tomorrow that are not completed
+    tasks_due_tomorrow = await db.tasks.find({
+        "due_date": {"$gte": tomorrow_start, "$lte": tomorrow_end},
+        "status": {"$ne": "Done"}
+    }).to_list(1000)
+    
+    for task in tasks_due_tomorrow:
+        # Check if notification already exists
+        existing_notification = await db.notifications.find_one({
+            "user_id": task["created_by"],
+            "task_id": task["id"],
+            "type": "due_date"
+        })
+        
+        if not existing_notification:
+            notification = Notification(
+                user_id=task["created_by"],
+                title="Task Due Tomorrow",
+                message=f"Task '{task['title']}' is due tomorrow",
+                type="due_date",
+                task_id=task["id"],
+                project_id=task["project_id"]
+            )
+            await db.notifications.insert_one(notification.dict())
+
 # Include the router in the main app
 app.include_router(api_router)
 
