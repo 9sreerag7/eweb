@@ -12,9 +12,11 @@ def debug_team_management():
     session = requests.Session()
     
     # 1. Register manager
+    import time
+    timestamp = str(int(time.time()))
     manager_data = {
         "name": "Debug Manager",
-        "email": "debug.manager@test.com",
+        "email": f"debug.manager.{timestamp}@test.com",
         "password": "DebugPass123!",
         "role": "Manager"
     }
