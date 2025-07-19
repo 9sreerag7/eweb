@@ -92,6 +92,76 @@ class Task(BaseModel):
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+# Notification Models
+class Notification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str
+    message: str
+    type: str  # "task_assignment", "due_date", "status_change", "comment"
+    task_id: Optional[str] = None
+    project_id: Optional[str] = None
+    read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class NotificationCreate(BaseModel):
+    user_id: str
+    title: str
+    message: str
+    type: str
+    task_id: Optional[str] = None
+    project_id: Optional[str] = None
+
+# File Attachment Models
+class FileAttachment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    filename: str
+    content_type: str
+    file_data: str  # base64 encoded file data
+    file_size: int
+    uploaded_by: str
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+
+class FileUpload(BaseModel):
+    task_id: str
+    filename: str
+    content_type: str
+    file_data: str
+
+# Comment Models
+class Comment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    user_id: str
+    user_name: str
+    content: str
+    parent_id: Optional[str] = None  # For threaded comments
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+class CommentCreate(BaseModel):
+    task_id: str
+    content: str
+    parent_id: Optional[str] = None
+
+class CommentUpdate(BaseModel):
+    content: str
+
+# Progress Analytics Models
+class ProgressStats(BaseModel):
+    total_tasks: int
+    completed_tasks: int
+    in_progress_tasks: int
+    todo_tasks: int
+    completion_rate: float
+    overdue_tasks: int
+
+class ProjectProgress(BaseModel):
+    project_id: str
+    project_title: str
+    stats: ProgressStats
+
 # Auth helper functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
