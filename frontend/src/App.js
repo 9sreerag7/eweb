@@ -1451,6 +1451,13 @@ const KanbanBoard = () => {
     }
   };
 
+  const refreshAllData = async () => {
+    await fetchProjects();
+    if (selectedProject) {
+      await fetchTasks();
+    }
+  };
+
   const createProject = async (formData) => {
     try {
       const response = await axios.post(`${API}/projects`, formData);
