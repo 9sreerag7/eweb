@@ -242,27 +242,33 @@ backend:
 
   - task: "Enhanced Button UX with Error Messages"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
           comment: "Updated task creation and team management buttons to show error messages instead of being disabled. Users can click buttons and get clear feedback about permissions."
+        - working: true
+          agent: "testing"
+          comment: "✅ CUSTOM ALERT MODALS WORKING PERFECTLY: Comprehensive testing completed successfully. Key findings: 1) Custom AlertModal component (lines 1408-1448) properly implemented with theme support 2) Permission checking logic working correctly - Team button shows 'Permission Denied' modal for non-owners, New Task button shows permission modal for non-Managers 3) Modal styling adapts to both light and dark themes with proper color transitions 4) OK button functionality working - modals close properly when clicked 5) Buttons are disabled when no project is selected (showing tooltips), but show custom modals when projects exist and user lacks permissions 6) Theme toggle functionality working perfectly - dark/light theme switching works smoothly 7) Refresh button functionality verified. The enhanced UX with custom modals instead of browser alerts is production-ready."
 
   - task: "Files and Comments Visibility"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
           comment: "Task detail modal includes FileUpload and Comments components that are visible to all team members when they click on tasks. Backend already allows all team members to access files and comments."
+        - working: true
+          agent: "testing"
+          comment: "✅ FILES AND COMMENTS FULLY ACCESSIBLE TO ALL TEAM MEMBERS: Comprehensive testing verified complete functionality. Key findings: 1) TaskDetailModal component (lines 1192-1269) working perfectly with toggle buttons for Files and Comments 2) Files toggle button shows FileUpload component with full functionality - team members can upload, view, and delete files 3) Comments toggle button shows Comments component with full functionality - team members can create, view, edit, and delete comments 4) Both Files and Comments sections properly visible and accessible to all team members regardless of role 5) File upload functionality working with 10MB size limit and base64 storage 6) Comment system working with threaded replies and real-time updates 7) Task detail modal opens correctly when clicking on task cards 8) Modal close functionality working properly. All team members have complete access to files and comments as designed."
 
 frontend:
   - task: "Authentication UI with React Context"
