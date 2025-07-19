@@ -287,6 +287,21 @@ async def create_task(task: TaskCreate, current_user: User = Depends(get_current
         created_by=current_user.id
     )
     await db.tasks.insert_one(task_obj.dict())
+    
+    # Create notification if task is assigned to someone
+    if task.assigned_to and task.assigned_to != current_user.id:
+        assigned_user = await db.users.find_one({"id": task.assigned_to})
+        if assigned_user:
+            notification = Notification(
+                user_id=task.assigned_to,
+                title="Task Assigned",
+                message=f"You have been assigned to task: {task.title}",
+                type="task_assignment",
+                task_id=task_obj.id,
+                project_id=task.project_id
+            )
+            await db.notifications.insert_one(notification.dict())
+    
     return task_obj
 
 @api_router.get("/tasks", response_model=List[Task])
