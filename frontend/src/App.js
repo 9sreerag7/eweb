@@ -1636,6 +1636,16 @@ const KanbanBoard = () => {
         <TaskForm onClose={() => setShowTaskForm(false)} onSubmit={createTask} />
       )}
 
+      {showTeamManager && selectedProject && (
+        <ProjectTeamManager
+          project={selectedProject}
+          onClose={() => setShowTeamManager(false)}
+          onUpdate={() => {
+            fetchProjects();
+          }}
+        />
+      )}
+
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
