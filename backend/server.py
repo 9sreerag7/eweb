@@ -313,10 +313,20 @@ async def update_project_team(project_id: str, team_update: ProjectTeamUpdate, c
 # Task Routes
 @api_router.post("/tasks", response_model=Task)
 async def create_task(task: TaskCreate, current_user: User = Depends(get_current_user)):
-    # Verify project exists and user has access
-    project = await db.projects.find_one({"id": task.project_id, "owner_id": current_user.id})
+    # Only managers can create tasks
+    if current_user.role != "Manager":
+        raise HTTPException(status_code=403, detail="Only team managers can create tasks")
+    
+    # Verify project exists and user has access (owner or team member)
+    project = await db.projects.find_one({
+        "id": task.project_id,
+        "$or": [
+            {"owner_id": current_user.id},  # Project owner
+            {"team_members": current_user.id}  # Team member
+        ]
+    })
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
     
     task_obj = Task(
         title=task.title,
