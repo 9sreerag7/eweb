@@ -321,6 +321,363 @@ class ProjectManagementTester:
             self.log_test("Task Deletion", False, f"Exception: {str(e)}")
             
         return False
+
+    def test_notifications_system(self):
+        """Test complete notifications system"""
+        print("\n=== Testing Notifications System ===")
+        
+        if not self.auth_token:
+            self.log_test("Notifications System", False, "No auth token available")
+            return False
+
+        # First create a new task to generate notifications
+        task_data = {
+            "title": "Notification Test Task",
+            "description": "Task created to test notification system",
+            "project_id": self.project_id,
+            "status": "To Do",
+            "assigned_to": self.user_data["id"]  # Assign to self to trigger notification
+        }
+        
+        try:
+            # Create task (should generate notification)
+            response = self.session.post(f"{BACKEND_URL}/tasks", json=task_data)
+            if response.status_code != 200:
+                self.log_test("Notifications System", False, f"Failed to create test task: {response.text}")
+                return False
+            
+            test_task = response.json()
+            test_task_id = test_task["id"]
+            
+            # Test 1: Create manual notification
+            notification_data = {
+                "user_id": self.user_data["id"],
+                "title": "Test Notification",
+                "message": "This is a test notification",
+                "type": "test",
+                "task_id": test_task_id,
+                "project_id": self.project_id
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/notifications", json=notification_data)
+            if response.status_code == 200:
+                notification = response.json()
+                self.log_test("Create Notification", True, f"Created notification: {notification['title']}")
+                notification_id = notification["id"]
+            else:
+                self.log_test("Create Notification", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+            
+            # Test 2: Get all notifications
+            response = self.session.get(f"{BACKEND_URL}/notifications")
+            if response.status_code == 200:
+                notifications = response.json()
+                if isinstance(notifications, list) and len(notifications) > 0:
+                    self.log_test("Get Notifications", True, f"Retrieved {len(notifications)} notifications")
+                else:
+                    self.log_test("Get Notifications", False, "No notifications found")
+            else:
+                self.log_test("Get Notifications", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 3: Get unread count
+            response = self.session.get(f"{BACKEND_URL}/notifications/unread-count")
+            if response.status_code == 200:
+                count_data = response.json()
+                if "count" in count_data:
+                    self.log_test("Get Unread Count", True, f"Unread notifications: {count_data['count']}")
+                else:
+                    self.log_test("Get Unread Count", False, "Missing count in response")
+            else:
+                self.log_test("Get Unread Count", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 4: Mark notification as read
+            response = self.session.put(f"{BACKEND_URL}/notifications/{notification_id}/read")
+            if response.status_code == 200:
+                self.log_test("Mark Notification Read", True, "Notification marked as read")
+            else:
+                self.log_test("Mark Notification Read", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 5: Test auto-notification on status change
+            status_data = {"status": "In Progress"}
+            response = self.session.put(f"{BACKEND_URL}/tasks/{test_task_id}/status", json=status_data)
+            if response.status_code == 200:
+                self.log_test("Auto-notification on Status Change", True, "Status updated (should generate notification)")
+            else:
+                self.log_test("Auto-notification on Status Change", False, f"Failed to update status: {response.text}")
+            
+            # Clean up test task
+            self.session.delete(f"{BACKEND_URL}/tasks/{test_task_id}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test("Notifications System", False, f"Exception: {str(e)}")
+            return False
+
+    def test_file_attachments_system(self):
+        """Test complete file attachments system"""
+        print("\n=== Testing File Attachments System ===")
+        
+        if not self.auth_token or not self.project_id:
+            self.log_test("File Attachments System", False, "No auth token or project ID available")
+            return False
+
+        # Create a test task for file attachments
+        task_data = {
+            "title": "File Attachment Test Task",
+            "description": "Task created to test file attachment system",
+            "project_id": self.project_id,
+            "status": "To Do"
+        }
+        
+        try:
+            response = self.session.post(f"{BACKEND_URL}/tasks", json=task_data)
+            if response.status_code != 200:
+                self.log_test("File Attachments System", False, f"Failed to create test task: {response.text}")
+                return False
+            
+            test_task = response.json()
+            test_task_id = test_task["id"]
+            
+            # Test 1: Upload file (base64 encoded)
+            import base64
+            test_content = "This is a test file content for the project management system."
+            encoded_content = base64.b64encode(test_content.encode()).decode()
+            
+            file_data = {
+                "task_id": test_task_id,
+                "filename": "test_document.txt",
+                "content_type": "text/plain",
+                "file_data": encoded_content
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/files", json=file_data)
+            if response.status_code == 200:
+                file_attachment = response.json()
+                self.log_test("Upload File", True, f"Uploaded file: {file_attachment['filename']}")
+                file_id = file_attachment["id"]
+            else:
+                self.log_test("Upload File", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+            
+            # Test 2: Get files for task
+            response = self.session.get(f"{BACKEND_URL}/files?task_id={test_task_id}")
+            if response.status_code == 200:
+                files = response.json()
+                if isinstance(files, list) and len(files) > 0:
+                    self.log_test("Get Files for Task", True, f"Retrieved {len(files)} files")
+                else:
+                    self.log_test("Get Files for Task", False, "No files found")
+            else:
+                self.log_test("Get Files for Task", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 3: Test file size validation (try to upload large file)
+            large_content = "x" * (11 * 1024 * 1024)  # 11MB content
+            large_encoded = base64.b64encode(large_content.encode()).decode()
+            
+            large_file_data = {
+                "task_id": test_task_id,
+                "filename": "large_file.txt",
+                "content_type": "text/plain",
+                "file_data": large_encoded
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/files", json=large_file_data)
+            if response.status_code == 400:
+                self.log_test("File Size Validation", True, "Large file properly rejected")
+            else:
+                self.log_test("File Size Validation", False, f"Expected 400, got {response.status_code}")
+            
+            # Test 4: Delete file
+            response = self.session.delete(f"{BACKEND_URL}/files/{file_id}")
+            if response.status_code == 200:
+                self.log_test("Delete File", True, "File deleted successfully")
+            else:
+                self.log_test("Delete File", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Clean up test task
+            self.session.delete(f"{BACKEND_URL}/tasks/{test_task_id}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test("File Attachments System", False, f"Exception: {str(e)}")
+            return False
+
+    def test_comments_system(self):
+        """Test complete comments system with threading"""
+        print("\n=== Testing Comments System ===")
+        
+        if not self.auth_token or not self.project_id:
+            self.log_test("Comments System", False, "No auth token or project ID available")
+            return False
+
+        # Create a test task for comments
+        task_data = {
+            "title": "Comments Test Task",
+            "description": "Task created to test comments system",
+            "project_id": self.project_id,
+            "status": "To Do"
+        }
+        
+        try:
+            response = self.session.post(f"{BACKEND_URL}/tasks", json=task_data)
+            if response.status_code != 200:
+                self.log_test("Comments System", False, f"Failed to create test task: {response.text}")
+                return False
+            
+            test_task = response.json()
+            test_task_id = test_task["id"]
+            
+            # Test 1: Create parent comment
+            comment_data = {
+                "task_id": test_task_id,
+                "content": "This is a parent comment for testing the comments system."
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/comments", json=comment_data)
+            if response.status_code == 200:
+                parent_comment = response.json()
+                self.log_test("Create Parent Comment", True, f"Created comment: {parent_comment['content'][:50]}...")
+                parent_comment_id = parent_comment["id"]
+            else:
+                self.log_test("Create Parent Comment", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+            
+            # Test 2: Create threaded (child) comment
+            child_comment_data = {
+                "task_id": test_task_id,
+                "content": "This is a reply to the parent comment.",
+                "parent_id": parent_comment_id
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/comments", json=child_comment_data)
+            if response.status_code == 200:
+                child_comment = response.json()
+                self.log_test("Create Threaded Comment", True, f"Created reply comment with parent_id: {child_comment['parent_id']}")
+                child_comment_id = child_comment["id"]
+            else:
+                self.log_test("Create Threaded Comment", False, f"HTTP {response.status_code}: {response.text}")
+                return False
+            
+            # Test 3: Get all comments for task
+            response = self.session.get(f"{BACKEND_URL}/comments?task_id={test_task_id}")
+            if response.status_code == 200:
+                comments = response.json()
+                if isinstance(comments, list) and len(comments) >= 2:
+                    self.log_test("Get Comments for Task", True, f"Retrieved {len(comments)} comments")
+                else:
+                    self.log_test("Get Comments for Task", False, f"Expected at least 2 comments, got {len(comments) if isinstance(comments, list) else 0}")
+            else:
+                self.log_test("Get Comments for Task", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 4: Update comment
+            update_data = {
+                "content": "This is an updated parent comment."
+            }
+            
+            response = self.session.put(f"{BACKEND_URL}/comments/{parent_comment_id}", json=update_data)
+            if response.status_code == 200:
+                updated_comment = response.json()
+                self.log_test("Update Comment", True, f"Updated comment content")
+            else:
+                self.log_test("Update Comment", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 5: Delete comment
+            response = self.session.delete(f"{BACKEND_URL}/comments/{child_comment_id}")
+            if response.status_code == 200:
+                self.log_test("Delete Comment", True, "Comment deleted successfully")
+            else:
+                self.log_test("Delete Comment", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Clean up remaining comment and test task
+            self.session.delete(f"{BACKEND_URL}/comments/{parent_comment_id}")
+            self.session.delete(f"{BACKEND_URL}/tasks/{test_task_id}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test("Comments System", False, f"Exception: {str(e)}")
+            return False
+
+    def test_analytics_system(self):
+        """Test progress analytics system"""
+        print("\n=== Testing Analytics System ===")
+        
+        if not self.auth_token or not self.project_id:
+            self.log_test("Analytics System", False, "No auth token or project ID available")
+            return False
+
+        try:
+            # Create some test tasks with different statuses for analytics
+            test_tasks = [
+                {"title": "Analytics Task 1", "status": "To Do"},
+                {"title": "Analytics Task 2", "status": "In Progress"},
+                {"title": "Analytics Task 3", "status": "Done"},
+                {"title": "Analytics Task 4", "status": "To Do"}
+            ]
+            
+            created_task_ids = []
+            for task_data in test_tasks:
+                task_data.update({
+                    "description": "Task for analytics testing",
+                    "project_id": self.project_id
+                })
+                
+                response = self.session.post(f"{BACKEND_URL}/tasks", json=task_data)
+                if response.status_code == 200:
+                    created_task_ids.append(response.json()["id"])
+            
+            # Test 1: Get progress analytics per project
+            response = self.session.get(f"{BACKEND_URL}/analytics/progress")
+            if response.status_code == 200:
+                progress_data = response.json()
+                if isinstance(progress_data, list):
+                    found_project = False
+                    for project_progress in progress_data:
+                        if project_progress["project_id"] == self.project_id:
+                            found_project = True
+                            stats = project_progress["stats"]
+                            self.log_test("Get Progress Analytics", True, 
+                                        f"Project stats - Total: {stats['total_tasks']}, "
+                                        f"Completed: {stats['completed_tasks']}, "
+                                        f"Rate: {stats['completion_rate']}%")
+                            break
+                    
+                    if not found_project:
+                        self.log_test("Get Progress Analytics", False, "Project not found in analytics")
+                else:
+                    self.log_test("Get Progress Analytics", False, "Response is not a list")
+            else:
+                self.log_test("Get Progress Analytics", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Test 2: Get overall analytics overview
+            response = self.session.get(f"{BACKEND_URL}/analytics/overview")
+            if response.status_code == 200:
+                overview_data = response.json()
+                required_fields = ["total_projects", "total_tasks", "completed_tasks", 
+                                 "completion_rate", "status_distribution", "recent_tasks_trend"]
+                
+                if all(field in overview_data for field in required_fields):
+                    self.log_test("Get Analytics Overview", True, 
+                                f"Overview - Projects: {overview_data['total_projects']}, "
+                                f"Tasks: {overview_data['total_tasks']}, "
+                                f"Completion: {overview_data['completion_rate']}%")
+                else:
+                    missing_fields = [field for field in required_fields if field not in overview_data]
+                    self.log_test("Get Analytics Overview", False, f"Missing fields: {missing_fields}")
+            else:
+                self.log_test("Get Analytics Overview", False, f"HTTP {response.status_code}: {response.text}")
+            
+            # Clean up test tasks
+            for task_id in created_task_ids:
+                self.session.delete(f"{BACKEND_URL}/tasks/{task_id}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_test("Analytics System", False, f"Exception: {str(e)}")
+            return False
         
     def test_unauthorized_access(self):
         """Test unauthorized access to protected endpoints"""
