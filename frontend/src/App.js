@@ -1543,7 +1543,15 @@ const KanbanBoard = () => {
               New Project
             </button>
             <button
-              onClick={() => setShowTeamManager(true)}
+              onClick={() => {
+                if (!selectedProject) {
+                  alert('Please select a project first');
+                } else if (selectedProject.owner_id !== user?.id) {
+                  alert('Only project owners can manage team members. You are a team member of this project.');
+                } else {
+                  setShowTeamManager(true);
+                }
+              }}
               disabled={!selectedProject || selectedProject.owner_id !== user?.id}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
               title={!selectedProject ? 'Select a project first' : selectedProject.owner_id !== user?.id ? 'Only project owners can manage team' : 'Manage project team members'}
