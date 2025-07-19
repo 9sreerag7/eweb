@@ -710,6 +710,13 @@ async def create_due_date_notifications():
             )
             await db.notifications.insert_one(notification.dict())
 
+# Users Route for Assignment
+@api_router.get("/users", response_model=List[User])
+async def get_users(current_user: User = Depends(get_current_user)):
+    """Get all users for task assignment"""
+    users = await db.users.find({}).to_list(1000)
+    return [User(**user) for user in users]
+
 # Include the router in the main app
 app.include_router(api_router)
 
