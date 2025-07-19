@@ -982,6 +982,12 @@ class ProjectManagementTester:
         self.test_comments_system()
         self.test_analytics_system()
         
+        # PRIORITY: Test Team Management System (NEW)
+        print("\n" + "=" * 60)
+        print("🎯 TESTING TEAM MANAGEMENT SYSTEM - HIGH PRIORITY")
+        print("=" * 60)
+        self.test_team_management_system()
+        
         # Clean up - delete the test task last
         self.test_delete_task()
         
