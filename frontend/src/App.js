@@ -1799,6 +1799,14 @@ const KanbanBoard = () => {
           }}
         />
       )}
+
+      {/* Custom Alert Modal */}
+      <AlertModal
+        show={alertModal.show}
+        title={alertModal.title}
+        message={alertModal.message}
+        onClose={() => setAlertModal({ show: false, title: '', message: '' })}
+      />
     </div>
   );
 };
