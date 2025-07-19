@@ -1566,7 +1566,9 @@ const KanbanBoard = () => {
                 📊 Dashboard
               </button>
               <NotificationBell />
-              <span className="text-gray-700">Welcome, {user?.name}</span>
+              <span className={`transition-colors duration-300 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>Welcome, {user?.name}</span>
               <button
                 onClick={logout}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
