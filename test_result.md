@@ -290,7 +290,9 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus: 
+    - "Project Team Management System"
+    - "Project Team Management UI"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
