@@ -4,7 +4,7 @@
 **Description:**  
 Added notification endpoints and modified task routes.
 
-![WhatsApp Image 2025-07-26 at 10.54.44 AM (3).jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.44%20AM%20(3).jpeg)
+![img1.jpeg](./images/img1.jpeg)
 
 ---
 
@@ -12,7 +12,7 @@ Added notification endpoints and modified task routes.
 **Description:**  
 Outlined full implementation plan including notifications, dashboard, and attachments.
 
-![WhatsApp Image 2025-07-26 at 10.54.44 AM (2).jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.44%20AM%20(2).jpeg)
+![img2.jpeg](./images/img2.jpeg)
 
 ---
 
@@ -20,7 +20,7 @@ Outlined full implementation plan including notifications, dashboard, and attach
 **Description:**  
 Explored backend/frontend structure, dependencies, and setup.
 
-![WhatsApp Image 2025-07-26 at 10.54.44 AM (1).jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.44%20AM%20(1).jpeg)
+![img3.jpeg](./images/img3.jpeg)
 
 ---
 
@@ -28,7 +28,7 @@ Explored backend/frontend structure, dependencies, and setup.
 **Description:**  
 Suggested implementation sequence and verified existing features.
 
-![WhatsApp Image 2025-07-26 at 10.54.44 AM.jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.44%20AM.jpeg)
+![img4.jpeg](./images/img4.jpeg)
 
 ---
 
@@ -36,7 +36,7 @@ Suggested implementation sequence and verified existing features.
 **Description:**  
 Demo credentials and sign-in guide for project access.
 
-![WhatsApp Image 2025-07-26 at 10.54.43 AM (2).jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.43%20AM%20(2).jpeg)
+![img5.jpeg](./images/img5.jpeg)
 
 ---
 
@@ -44,7 +44,7 @@ Demo credentials and sign-in guide for project access.
 **Description:**  
 Added `/users` endpoint, fixed team access logic, verified workflow.
 
-![WhatsApp Image 2025-07-26 at 10.54.43 AM (1).jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.43%20AM%20(1).jpeg)
+![img6.jpeg](./images/img6.jpeg)
 
 ---
 
@@ -52,14 +52,14 @@ Added `/users` endpoint, fixed team access logic, verified workflow.
 **Description:**  
 Implemented task creation restrictions, role-based permissions, and frontend error feedback.
 
-![WhatsApp Image 2025-07-26 at 10.54.43 AM.jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.43%20AM.jpeg)
+![img7.jpeg](./images/img7.jpeg)
 
 ---
 
 **Description:**  
 Verified team feature testing and frontend integration.
 
-![Screenshot 2025-07-26 104350.png](./images/Screenshot%202025-07-26%20104350.png)
+![img8.png](./images/img8.png)
 
 ---
 
@@ -67,6 +67,6 @@ Verified team feature testing and frontend integration.
 **Description:**  
 Final status: Team workflows, file access, and comments enabled and verified.
 
-![WhatsApp Image 2025-07-26 at 10.54.45 AM.jpeg](./images/WhatsApp%20Image%202025-07-26%20at%2010.54.45%20AM.jpeg)
+![img9.jpeg](./images/img9.jpeg)
 
 ---
